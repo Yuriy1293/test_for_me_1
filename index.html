@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Gifts Tracker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            color: #ffffff;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(20px);
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap; /* Добавлено для адаптивности */
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0; /* Убрал лишние отступы */
+        }
+
+        /* Добавлен контейнер для информации в хедере для лучшего выравнивания */
+        .header-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end; /* Выравнивание по правому краю */
+            font-size: 0.9em;
+            opacity: 0.7;
+            text-align: right;
+        }
+
+        .last-update { /* Оставлено как было в вашем CSS */
+            font-size: 14px;
+            opacity: 0.8;
+            color: #4ecdc4;
+        }
+
+        /* Новый класс для отображения общего количества моделей */
+        .total-models-count {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 3px;
+        }
+
+        .controls {
+            padding: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .time-filter-group {
+            display: flex;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 25px;
+            padding: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .time-filter-btn {
+            padding: 8px 16px;
+            background: transparent;
+            border: none;
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .time-filter-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .time-filter-btn.active {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .filter-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .collections-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .collection-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 16px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center; /* Центрирует содержимое карточки по горизонтали */
+            text-align: center; /* Центрирует текст внутри карточки */
+        }
+
+        .collection-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .collection-header {
+            display: flex;
+            flex-direction: column; /* Элементы заголовка коллекции будут располагаться вертикально */
+            align-items: center; /* Центрирует элементы по горизонтали */
+            gap: 12px;
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        .collection-image { /* Стили для изображения коллекции */
+            width: 80px; /* Размер изображения */
+            height: 80px;
+            border-radius: 12px; /* Чуть скругленные углы */
+            object-fit: cover;
+            margin-bottom: 10px; /* Отступ снизу */
+            border: 2px solid #4ecdc4; /* Рамка */
+        }
+
+        .collection-emoji {
+            font-size: 32px;
+            /* margin-bottom: 5px; если нужен отступ */
+        }
+
+        .collection-name {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .collection-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            width: 100%; /* Занимает всю ширину */
+            font-size: 1.1em;
+            font-weight: 500;
+        }
+
+        .price {
+            font-size: 18px;
+            font-weight: 700;
+            color: #4ecdc4;
+        }
+        .model-card .price { /* Уточнение для цены в моделях */
+            font-size: 1.2em; /* Немного крупнее для моделей */
+            font-weight: 700;
+        }
+
+        .change {
+            font-size: 16px;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .change.positive {
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.1);
+        }
+
+        .change.negative {
+            color: #ff4757;
+            background: rgba(255, 71, 87, 0.1);
+        }
+
+        .change.neutral {
+            color: #ffd700;
+            background: rgba(255, 215, 0, 0.1);
+        }
+
+        .time-period-label {
+            font-size: 12px;
+            opacity: 0.7;
+            margin-top: 5px;
+        }
+
+        .models-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .model-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            display: flex;
+            flex-direction: column; /* Элементы внутри карточки располагаются вертикально */
+            align-items: center; /* Центрирует по горизонтали */
+            text-align: center; /* Центрирует текст */
+        }
+
+        .model-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: scale(1.02);
+        }
+
+        .model-image {
+            width: 100%; /* Меняем на 100% ширины родительского элемента */
+            height: 150px; /* Фиксированная высота для всех изображений моделей */
+            object-fit: cover; /* Обрезает изображение, чтобы оно заполнило контейнер */
+            border-radius: 8px; /* Немного скругленные углы */
+            margin-bottom: 10px;
+            border: 2px solid #4ecdc4;
+        }
+
+        .model-header {
+            display: flex;
+            flex-direction: column; /* Заголовок модели также вертикально */
+            justify-content: center; /* Центрируем, если элементов несколько */
+            align-items: center; /* Центрируем по горизонтали */
+            margin-bottom: 10px;
+            width: 100%;
+        }
+
+        .model-name {
+            font-size: 18px; /* Увеличил размер для лучшей читаемости */
+            font-weight: 600;
+            margin-bottom: 5px; /* Небольшой отступ от цены, если она в заголовке */
+        }
+
+        .model-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center; /* Выравнивание элементов по центру по вертикали */
+            font-size: 14px;
+            opacity: 0.8;
+            width: 100%; /* Занимает всю ширину */
+            margin-top: auto; /* Прижимает к низу, если flex-direction: column */
+        }
+        .model-stats span { /* Добавил для выравнивания элементов в строке */
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            justify-content: center; /* Для центрирования содержимого */
+            align-items: center; /* Для центрирования содержимого */
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 20px;
+            padding: 30px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative; /* Чтобы кнопка закрытия была позиционирована относительно */
+            animation: fadeIn 0.3s ease-out; /* Анимация появления */
+            display: flex; /* Для компоновки содержимого модалки */
+            flex-direction: column;
+        }
+
+        @keyframes fadeIn { /* Анимация для модального окна */
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between; /* Оставлено space-between для кнопки закрытия */
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap; /* Для адаптивности заголовка */
+        }
+        .modal-header h2 { /* Стили для заголовка модалки */
+            font-size: 1.8em;
+            color: #4ecdc4; /* Цвет как для цен */
+            flex-grow: 1; /* Чтобы заголовок занимал доступное пространство */
+            text-align: center; /* Центрирование текста */
+        }
+
+        .close { /* Ваш класс для кнопки закрытия */
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover, .close:focus {
+            color: #fff;
+        }
+
+        .chart-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            width: 100%;
+            height: 300px; /* Фиксированная высота для графика */
+            position: relative;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Изменено для лучшей адаптивности */
+            gap: 15px;
+            margin: 20px 0;
+            text-align: center; /* Выравнивание текста по центру */
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+            /* Цвет по умолчанию, будет переопределен классами ниже */
+            color: white;
+        }
+        /* Добавлены классы для цветовой индикации */
+        .stat-value.positive { color: #00ff88; }
+        .stat-value.negative { color: #ff4757; }
+        .stat-value.neutral { color: #ffd700; } /* Желтый для нейтрального изменения */
+
+
+        .stat-label {
+            font-size: 14px;
+            opacity: 0.7;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            display: none;
+            transition: all 0.3s ease; /* Для эффекта наведения */
+            font-size: 0.9em;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 18px;
+            opacity: 0.7;
+        }
+
+        .search-box {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 10px 15px;
+            color: white;
+            width: 250px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        .search-box:focus { /* Фокус на поле поиска */
+            border-color: #667eea;
+            outline: none;
+        }
+
+        .search-box::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .analytics-summary {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); /* Адаптировано под 150px min-width */
+            gap: 15px;
+            text-align: center; /* Центрирование текста внутри */
+        }
+        .analytics-summary .stat-card { /* Уточнение для карточек внутри аналитики */
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+        }
+
+        .error-message {
+            background: rgba(255, 71, 87, 0.1);
+            border: 1px solid #ff4757;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            color: #ff4757;
+            margin: 20px 0;
+        }
+
+        .refresh-btn {
+            background: linear-gradient(45deg, #4ecdc4, #44a08d);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .refresh-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(78, 205, 196, 0.3);
+        }
+
+        /* --- АДАПТИВНЫЕ СТИЛИ (МОБИЛЬНЫЕ) --- */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px; /* Уменьшаем отступы по краям */
+            }
+
+            .collections-grid,
+            .models-list {
+                grid-template-columns: 1fr; /* ОДНА КОЛОНКА на мобильных */
+                gap: 15px; /* Отступы между карточками */
+            }
+
+            .collection-card,
+            .model-card {
+                padding: 15px; /* Уменьшаем внутренние отступы карточек */
+                flex-direction: column; /* Убеждаемся, что элементы внутри вертикально */
+                align-items: center; /* Центрируем все содержимое по горизонтали */
+                text-align: center; /* Центрируем текст */
+                width: 95%; /* Делаем карточку чуть меньше, чем 100%, для отступов от края */
+                margin: 0 auto; /* Центрируем карточку */
+            }
+
+            .collection-image {
+                width: 90px; /* Увеличил размер изображения коллекции */
+                height: 90px;
+                border-radius: 12px; /* Сохраняем квадратные изображения с закругленными углами */
+                margin-bottom: 15px; /* Увеличил отступ */
+            }
+
+            .collection-emoji {
+                font-size: 40px; /* Увеличил размер эмодзи */
+                margin-bottom: 5px; /* Небольшой отступ */
+            }
+
+            .collection-name {
+                font-size: 22px; /* Увеличил размер названия коллекции */
+            }
+
+            .model-image {
+                width: 100%; /* Картинка модели занимает всю доступную ширину */
+                height: 200px; /* Увеличил высоту для моделей */
+                border-radius: 8px;
+                margin-bottom: 15px; /* Отступ от нижних элементов */
+            }
+
+            .model-name {
+                font-size: 20px; /* Увеличил размер названия модели */
+            }
+
+            .model-header {
+                 flex-direction: column; /* Убеждаемся, что заголовок модели вертикально */
+                 align-items: center;
+                 justify-content: center;
+                 margin-bottom: 10px;
+                 width: 100%;
+            }
+
+            .price {
+                font-size: 20px; /* Увеличил размер цены */
+            }
+
+            .change {
+                font-size: 18px; /* Увеличил размер изменения */
+                padding: 6px 12px;
+            }
+
+            .model-stats, .collection-stats {
+                flex-direction: row; /* На мобильных эти блоки могут оставаться в строку */
+                justify-content: space-around; /* Распределить пространство */
+                width: 100%; /* Занимают всю ширину */
+                margin-bottom: 10px; /* Отступ */
+            }
+
+
+            .controls {
+                padding: 15px 10px;
+                flex-direction: column; /* Элементы управления располагаются вертикально */
+                gap: 10px; /* Уменьшаем промежутки */
+            }
+            .time-filter-group, .filter-group {
+                flex-wrap: wrap;
+                width: 100%; /* Занимают всю ширину */
+                justify-content: center;
+                gap: 5px; /* Уменьшаем промежутки между кнопками внутри группы */
+            }
+            .time-filter-btn, .filter-btn {
+                padding: 10px 15px; /* Увеличиваем padding для удобства нажатия */
+                font-size: 16px; /* Увеличиваем размер шрифта кнопок */
+            }
+
+            .modal-content {
+                padding: 20px;
+                width: 95%; /* Ширина модалки */
+                margin: auto 10px; /* Отступы по бокам */
+            }
+
+            .modal-header {
+                flex-direction: column; /* Заголовок модалки вертикально */
+                text-align: center;
+                margin-bottom: 15px;
+            }
+            .modal-header h2 {
+                font-size: 1.5em; /* Немного уменьшаем размер заголовка модалки */
+                margin-bottom: 10px; /* Отступ от кнопки закрытия */
+            }
+            .close {
+                font-size: 32px; /* Увеличиваем кнопку закрытия */
+            }
+
+            .header { /* Адаптивность для шапки */
+                flex-direction: column;
+                align-items: flex-start;
+                padding: 10px 15px;
+            }
+            .header .header-info {
+                align-items: flex-start;
+                margin-top: 10px;
+                width: 100%; /* Занимает всю ширину */
+            }
+            .analytics-summary, .stats-grid { /* Для адаптивности аналитики и модалки */
+                grid-template-columns: 1fr;
+                gap: 10px; /* Уменьшаем промежутки */
+                padding: 15px; /* Уменьшаем padding */
+            }
+            .search-box {
+                width: 100%; /* Занимает всю ширину на мобильных */
+                margin-top: 10px; /* Отступ сверху */
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎁 Telegram Gifts Tracker</h1>
+        <div class="header-info"> <div class="last-update" id="lastUpdate">Загрузка...</div>
+            <div class="total-models-count" id="totalModelsCount">Всего моделей: 0</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="time-filter-group">
+            <button class="time-filter-btn active" data-period="1h">1 час</button>
+            <button class="time-filter-btn" data-period="24h">24 часа</button>
+            <button class="time-filter-btn" data-period="7d">7 дней</button>
+            <button class="time-filter-btn" data-period="30d">30 дней</button>
+        </div>
+
+        <input type="text" class="search-box" placeholder="Поиск по названию..." id="searchBox" onkeyup="searchGifts()">
+
+        <button class="filter-btn active" data-sort="price">Сортировка по цене</button>
+        <button class="filter-btn" data-sort="volume">По количеству</button>
+        <button class="filter-btn" data-sort="name">По названию</button>
+        <button class="filter-btn" data-sort="change">По изменению</button>
+
+        <button class="refresh-btn" onclick="loadData()">🔄 Обновить</button>
+    </div>
+
+    <div class="container">
+        <div class="analytics-summary" id="analyticsSummary" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-value" id="totalCollections">0</div>
+                <div class="stat-label">Коллекций</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalModels">0</div>
+                <div class="stat-label">Моделей</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="avgPrice">0</div>
+                <div class="stat-label">Средняя цена</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="topGainer">-</div>
+                <div class="stat-label">Лучший рост</div>
+            </div>
+        </div>
+
+        <button class="back-btn" onclick="showCollections()">← Назад к коллекциям</button>
+
+        <div id="collections-view">
+            <div class="loading">Загрузка данных...</div>
+        </div>
+
+        <div id="models-view" style="display: none;">
+            <div class="models-list"></div>
+        </div>
+    </div>
+
+    <div id="statsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Статистика</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="currentPrice">0</div>
+                    <div class="stat-label">Цена (TON)</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="priceWithCommission">0</div>
+                    <div class="stat-label">С комиссией</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="volume">0</div>
+                    <div class="stat-label">Количество</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="changePeriodValue">0%</div>
+                    <div class="stat-label">Изменение (<span id="modalPeriodLabel">24ч</span>)</div>
+                </div>
+            </div>
+
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Глобальные переменные
+        let giftsData = null;
+        let currentView = 'collections';
+        let currentCollection = null;
+        let currentPeriod = '1h'; // Дефолтный период для отображения изменений
+        let currentSort = 'price'; // Дефолтная сортировка
+        let currentChart = null; // Для экземпляра Chart.js
+
+        // Словарь эмодзи для коллекций
+        const collectionEmojis = {
+            'Star': '⭐',
+            'Moon': '🌙',
+            'Sun': '☀️',
+            'Heart': '❤️',
+            'Gift': '',
+            'Diamond': '💎',
+            'Fire': '🔥',
+            'Ice': '🧊',
+            'Thunder': '⚡',
+            'Roseeeeeeeeeeee': '🌹',
+            'default': ''
+        };
+
+        // Загрузка данных при запуске
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+            setupEventListeners();
+
+            // Автообновление каждые 30 секунд
+            setInterval(loadData, 30000);
+        });
+
+        // Настройка обработчиков событий
+        function setupEventListeners() {
+            // Фильтры времени
+            document.querySelectorAll('.time-filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.time-filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentPeriod = this.dataset.period;
+                    document.getElementById('modalPeriodLabel').textContent = getPeriodLabel(currentPeriod); // Обновляем период в модалке
+                    updateView();
+                    updateAnalyticsSummary(); // Обновить аналитику при смене периода
+                });
+            });
+
+            // Фильтры сортировки
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentSort = this.dataset.sort;
+                    updateView();
+                });
+            });
+
+            // Закрытие модального окна по клику вне его
+            window.onclick = function(event) {
+                const modal = document.getElementById('statsModal');
+                if (event.target == modal) {
+                    closeModal();
+                }
+            };
+        }
+
+        // Основная функция загрузки данных
+        async function loadData() {
+            try {
+                // Изначальное сообщение при загрузке
+                document.getElementById('collections-view').innerHTML = '<div class="loading">Загрузка данных...</div>';
+                document.getElementById('analyticsSummary').style.display = 'none'; // Скрыть до загрузки
+
+                // Загрузка данных с сервера
+                const response = await fetch('/api/gifts-data');
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                giftsData = await response.json();
+
+                updateLastUpdate();
+                updateAnalyticsSummary();
+                updateView(); // Обновляем основное представление
+
+                console.log('Данные успешно загружены');
+            } catch (error) {
+                console.error('Ошибка загрузки данных:', error);
+
+                // Используем моковые данные для демонстрации при ошибке
+                console.log('Используются демо-данные');
+                giftsData = generateMockData();
+
+                document.getElementById('collections-view').innerHTML = '<div class="error-message">Не удалось загрузить данные с сервера. Используются демонстрационные данные.</div><div class="collections-grid"></div>';
+
+                updateLastUpdate();
+                updateAnalyticsSummary();
+                updateView();
+            }
+        }
+
+        // Генерация моковых данных (для демонстрации, удалить в продакшене)
+        function generateMockData() {
+            const collections = ['Star', 'Moon', 'Sun', 'Heart', 'Diamond'];
+            const models = ['Basic', 'Premium', 'Limited', 'Rare', 'Epic'];
+
+            const data = {
+                metadata: {
+                    last_update: new Date().toISOString(),
+                    data_range_hours: 720,
+                    total_records: 0 // Будет подсчитано ниже
+                },
+                collections: {}
+            };
+            let totalModelsCount = 0;
+
+            collections.forEach(collection => {
+                const collectionModels = {};
+                let collectionFloorPriceSum = 0; // Для расчета средней цены коллекции в моковых данных
+
+                models.forEach(model => {
+                    const basePrice = parseFloat((Math.random() * 100 + 10).toFixed(2));
+                    const quantity = Math.floor(Math.random() * 1000) + 1;
+
+                    const history = [];
+                    const now = new Date();
+
+                    for (let i = 720; i >= 0; i -= 1) { // История за 30 дней (720 часов)
+                        const time = new Date(now.getTime() - i * 60 * 60 * 1000);
+                        const priceVariation = (Math.random() - 0.5) * 0.2; // +/- 10%
+                        const price = parseFloat(Math.max(1, basePrice * (1 + priceVariation)).toFixed(2));
+
+                        history.push({
+                            time: time.toISOString(),
+                            price: price,
+                            priceWithCommission: parseFloat((price * 1.1).toFixed(2)),
+                            quantity: quantity + Math.floor((Math.random() - 0.5) * 100)
+                        });
+                    }
+
+                    const current = history[history.length - 1];
+                    const changes = {};
+
+                    const periods = {
+                        '1h': 1,
+                        '24h': 24,
+                        '7d': 168,
+                        '30d': 720
+                    };
+
+                    Object.entries(periods).forEach(([period, hours]) => {
+                        // Убедимся, что есть достаточно истории для расчета
+                        const pastIndex = Math.max(0, history.length - hours - 1);
+                        const pastEntry = history[pastIndex];
+                        const currentPrice = current.price;
+
+                        let change = 0;
+                        if (pastEntry && pastEntry.price > 0) { // Проверяем, что pastEntry существует и цена больше 0
+                            change = ((currentPrice - pastEntry.price) / pastEntry.price) * 100;
+                        }
+                        changes[period] = parseFloat(change.toFixed(2));
+                    });
+
+                    collectionModels[model] = {
+                        model_image_url: `https://via.placeholder.com/80/0096ff/FFFFFF?text=${model.charAt(0)}`, // Пример заглушки
+                        current: {
+                            floorPrice: current.price,
+                            priceWithComission: current.priceWithCommission,
+                            howMany: current.quantity,
+                            lastUpdate: current.time
+                        },
+                        changes: changes,
+                        history: history
+                    };
+                    collectionFloorPriceSum += current.price; // Суммируем для коллекции
+                    totalModelsCount++; // Увеличиваем общий счетчик моделей
+                });
+                // Добавляем collection_image_url и collection_floorPrice в моковые данные
+                data.collections[collection] = {
+                    collection_image_url: `https://via.placeholder.com/80/0096ff/FFFFFF?text=${collection.charAt(0)}`, // Пример заглушки
+                    collection_floorPrice: parseFloat((collectionFloorPriceSum / models.length).toFixed(2)), // Средняя цена по моделям в коллекции
+                    models: collectionModels
+                };
+            });
+            data.metadata.total_records = totalModelsCount; // Обновляем общее количество моделей
+
+            return data;
+        }
+
+        // Обновление времени последнего обновления
+        function updateLastUpdate() {
+            // Проверка на существование giftsData и metadata
+            if (giftsData && giftsData.metadata && giftsData.metadata.last_update) {
+                const lastUpdate = new Date(giftsData.metadata.last_update);
+                const formatted = lastUpdate.toLocaleString('ru-RU', {
+                    year: 'numeric', month: '2-digit', day: '2-digit',
+                    hour: '2-digit', minute: '2-digit', second: '2-digit'
+                });
+                document.getElementById('lastUpdate').textContent = `Обновлено: ${formatted}`;
+                // Обновляем общее количество моделей
+                document.getElementById('totalModelsCount').textContent = `Всего моделей: ${giftsData.metadata.total_records || 0}`;
+            } else {
+                document.getElementById('lastUpdate').textContent = `Обновлено: Нет данных`;
+                document.getElementById('totalModelsCount').textContent = `Всего моделей: 0`;
+            }
+        }
+
+        // Обновление сводной аналитики
+        function updateAnalyticsSummary() {
+            if (!giftsData || !giftsData.collections) {
+                document.getElementById('analyticsSummary').style.display = 'none';
+                return;
+            }
+
+            const collections = Object.keys(giftsData.collections);
+            let totalModelsCount = 0;
+            let totalPriceSum = 0;
+            let maxChange = -Infinity;
+            let topGainer = '-';
+            let gainerCollection = '';
+            let gainerModel = '';
+
+            collections.forEach(collectionName => {
+                const collectionObj = giftsData.collections[collectionName];
+                // Проверяем, что collectionObj и collectionObj.models существуют
+                if (!collectionObj || !collectionObj.models) {
+                    return;
+                }
+                const models = Object.keys(collectionObj.models);
+                totalModelsCount += models.length;
+
+                models.forEach(modelName => {
+                    const modelData = collectionObj.models[modelName];
+                    // Безопасный доступ к floorPrice и changes
+                    const floorPrice = modelData?.current?.floorPrice ?? 0;
+                    totalPriceSum += floorPrice;
+
+                    const change = modelData?.changes?.[currentPeriod] ?? 0; // Используем optional chaining и nullish coalescing
+                    if (change > maxChange) {
+                        maxChange = change;
+                        gainerCollection = collectionName;
+                        gainerModel = modelName;
+                    }
+                });
+            });
+
+            const avgPrice = totalModelsCount > 0 ? (totalPriceSum / totalModelsCount).toFixed(2) : '0.00';
+            topGainer = maxChange > -Infinity && maxChange !== 0 ? `${gainerCollection} ${gainerModel}` : '-';
+
+            document.getElementById('totalCollections').textContent = collections.length;
+            document.getElementById('totalModels').textContent = totalModelsCount;
+            document.getElementById('avgPrice').textContent = `${avgPrice} TON`;
+
+            const topGainerElement = document.getElementById('topGainer');
+            if (maxChange > -Infinity && maxChange !== 0) {
+                topGainerElement.textContent = `${topGainer} (${maxChange > 0 ? '+' : ''}${maxChange.toFixed(1)}%)`;
+                topGainerElement.classList.remove('negative', 'neutral');
+                topGainerElement.classList.add(maxChange > 0 ? 'positive' : 'negative');
+            } else {
+                topGainerElement.textContent = '-';
+                topGainerElement.classList.remove('positive', 'negative');
+                topGainerElement.classList.add('neutral');
+            }
+
+            document.getElementById('analyticsSummary').style.display = 'grid'; // Показываем после обновления
+        }
+
+        // Обновление текущего представления
+        function updateView() {
+            if (currentView === 'collections') {
+                showCollections();
+            } else if (currentView === 'models') {
+                showModels(currentCollection);
+            }
+        }
+
+        // Показ коллекций
+        function showCollections() {
+            currentView = 'collections';
+            // Используем существующий collections-grid и очищаем его
+            document.getElementById('collections-view').style.display = 'block';
+            document.getElementById('models-view').style.display = 'none';
+            document.querySelector('.back-btn').style.display = 'none';
+
+            if (!giftsData || !giftsData.collections || Object.keys(giftsData.collections).length === 0) {
+                document.getElementById('collections-view').innerHTML = '<div class="loading">Нет данных для отображения коллекций.</div>';
+                return;
+            }
+
+            const collections = Object.keys(giftsData.collections);
+            const collectionsData = collections.map(collectionName => {
+                const collectionObj = giftsData.collections[collectionName];
+                // Проверяем, что collectionObj и collectionObj.models существуют
+                if (!collectionObj || !collectionObj.models) {
+                    return { // Возвращаем пустые данные для пропуска
+                        name: collectionName, avgPrice: 0, change: 0, volume: 0, modelsCount: 0
+                    };
+                }
+
+                const models = Object.keys(collectionObj.models);
+                let avgPrice = 0;
+                let totalChange = 0;
+                let totalVolume = 0;
+
+                models.forEach(modelName => {
+                    const modelData = collectionObj.models[modelName];
+                    // Безопасный доступ
+                    avgPrice += modelData?.current?.floorPrice ?? 0;
+                    totalChange += modelData?.changes?.[currentPeriod] ?? 0;
+                    totalVolume += modelData?.current?.howMany ?? 0;
+                });
+
+                avgPrice = models.length > 0 ? avgPrice / models.length : 0;
+                totalChange = models.length > 0 ? totalChange / models.length : 0;
+
+                return {
+                    name: collectionName,
+                    avgPrice: avgPrice,
+                    change: totalChange,
+                    volume: totalVolume,
+                    modelsCount: models.length
+                };
+            }).filter(col => col.modelsCount > 0); // Отфильтровываем коллекции без моделей или с ошибками
+
+            // Сортировка
+            sortCollections(collectionsData);
+
+            // Поиск
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            const filteredData = collectionsData.filter(collection =>
+                collection.name.toLowerCase().includes(searchTerm)
+            );
+
+            renderCollections(filteredData);
+        }
+
+        // Сортировка коллекций
+        function sortCollections(data) {
+            switch (currentSort) {
+                case 'price':
+                    data.sort((a, b) => b.avgPrice - a.avgPrice);
+                    break;
+                case 'volume':
+                    data.sort((a, b) => b.volume - a.volume);
+                    break;
+                case 'name':
+                    data.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'change':
+                    data.sort((a, b) => b.change - a.change);
+                    break;
+            }
+        }
+
+
+        // Отрисовка коллекций
+    function renderCollections(collections) {
+        // collections-view уже содержит .collections-grid, просто очищаем и наполняем его
+        let collectionsGrid = document.getElementById('collections-view').querySelector('.collections-grid');
+        if (!collectionsGrid) { // Если его нет (например, из-за сообщения об ошибке)
+            collectionsGrid = document.createElement('div');
+            collectionsGrid.className = 'collections-grid';
+            document.getElementById('collections-view').appendChild(collectionsGrid);
+        }
+        collectionsGrid.innerHTML = ''; // Очищаем перед добавлением
+
+        if (collections.length === 0) {
+            collectionsGrid.innerHTML = '<div class="loading">Нет результатов, соответствующих вашему поиску.</div>';
+        } else {
+            collections.forEach(collection => {
+                const emoji = collectionEmojis[collection.name] || collectionEmojis.default;
+                const changeClass = collection.change > 0 ? 'positive' :
+                                    collection.change < 0 ? 'negative' : 'neutral';
+                const changeSymbol = collection.change > 0 ? '↗' :
+                                    collection.change < 0 ? '↘' : '→';
+                const displayChange = Math.abs(collection.change).toFixed(1);
+
+                // 1. ДОБАВЛЕНА ЭТА СТРОКА: Получаем URL изображения коллекции
+                const collectionImageUrl = giftsData.collections[collection.name]?.collection_image_url || 'https://via.placeholder.com/48/0096ff/FFFFFF?text=🎁';
+
+                const cardHtml = `
+                    <div class="collection-card" onclick="showModels(&quot;${collection.name.replace(/"/g, '&quot;')}&quot;)">
+                        <div class="collection-header">
+                            <img src="${collectionImageUrl}" alt="${collection.name}" class="collection-image">
+                            <div class="collection-emoji">${emoji}</div>
+                            <div class="collection-name">${collection.name}</div>
+                        </div>
+                        <div class="collection-stats">
+                            <div class="price">${collection.avgPrice.toFixed(2)} TON</div>
+                            <div class="change ${changeClass}">
+                                ${changeSymbol} ${displayChange}%
+                            </div>
+                        </div>
+                        <div class="model-stats">
+                            <span>Моделей: ${collection.modelsCount}</span>
+                            <span>Объем: ${collection.volume}</span>
+                        </div>
+                        <div class="time-period-label">за ${getPeriodLabel(currentPeriod)}</div>
+                    </div>
+                `;
+                collectionsGrid.insertAdjacentHTML('beforeend', cardHtml);
+            });
+        }
+    }
+
+        // Показ моделей коллекции
+        function showModels(collectionName) {
+            currentView = 'models';
+            currentCollection = collectionName;
+
+            document.getElementById('collections-view').style.display = 'none';
+            document.getElementById('models-view').style.display = 'block';
+            document.querySelector('.back-btn').style.display = 'block';
+
+            if (!giftsData || !giftsData.collections || !giftsData.collections[collectionName] || !giftsData.collections[collectionName].models) {
+                document.getElementById('models-view').querySelector('.models-list').innerHTML = '<div class="loading">Данные для этой коллекции не найдены или отсутствуют модели.</div>';
+                return;
+            }
+
+            const models = Object.keys(giftsData.collections[collectionName].models);
+            const modelsData = models.map(modelName => {
+                const modelData = giftsData.collections[collectionName].models[modelName];
+                // Безопасный доступ к данным
+                return {
+                    name: modelName,
+                    collection: collectionName,
+                    price: modelData?.current?.floorPrice ?? 0,
+                    priceWithCommission: modelData?.current?.priceWithComission ?? 0,
+                    quantity: modelData?.current?.howMany ?? 0,
+                    change: modelData?.changes?.[currentPeriod] ?? 0,
+                    data: modelData // Передаем все данные модели для модального окна
+                };
+            });
+
+            // Сортировка моделей
+            sortModels(modelsData);
+
+            // Поиск
+            const searchTerm = document.getElementById('searchBox').value.toLowerCase();
+            const filteredData = modelsData.filter(model =>
+                model.name.toLowerCase().includes(searchTerm)
+            );
+
+            renderModels(filteredData);
+        }
+
+        // Сортировка моделей
+        function sortModels(data) {
+            switch (currentSort) {
+                case 'price':
+                    data.sort((a, b) => b.price - a.price);
+                    break;
+                case 'volume':
+                    data.sort((a, b) => b.quantity - a.quantity);
+                    break;
+                case 'name':
+                    data.sort((a, b) => a.name.localeCompare(b.name));
+                    break;
+                case 'change':
+                    data.sort((a, b) => b.change - a.change);
+                    break;
+            }
+        }
+
+        // Отрисовка моделей
+        function renderModels(models) {
+            const modelsList = document.getElementById('models-view').querySelector('.models-list');
+            modelsList.innerHTML = ''; // Очищаем список перед отрисовкой
+
+            if (models.length === 0) {
+                modelsList.innerHTML = '<div class="loading">Нет результатов, соответствующих вашему поиску.</div>';
+                return;
+            }
+
+            models.forEach(model => {
+                const changeClass = model.change > 0 ? 'positive' :
+                                    model.change < 0 ? 'negative' : 'neutral';
+                const changeSymbol = model.change > 0 ? '↗' :
+                                    model.change < 0 ? '↘' : '→';
+                const displayChange = Math.abs(model.change).toFixed(1);
+
+                // Безопасный доступ к model_image_url
+                const imageUrl = model.data?.model_image_url || 'https://via.placeholder.com/80/0096ff/FFFFFF?text=Gift'; // Заглушка, если нет URL
+                const imageHtml = `<img src="${imageUrl}" alt="${model.name}" class="model-image">`;
+
+                const modelCard = document.createElement('div');
+                modelCard.className = 'model-card';
+                modelCard.innerHTML = `
+                    ${imageHtml}
+                    <div class="model-header">
+                        <div class="model-name">${model.name}</div>
+                        <div class="price">${model.price.toFixed(2)} TON</div>
+                    </div>
+                    <div class="model-stats">
+                        <span>Количество: ${model.quantity}</span>
+                        <span class="change ${changeClass}">
+                            ${changeSymbol} ${displayChange}%
+                        </span>
+                    </div>
+                    <div class="time-period-label">за ${getPeriodLabel(currentPeriod)}</div>
+                `;
+                modelCard.onclick = () => openModal(model.data, model.name); // Обработчик клика для модального окна
+                modelsList.appendChild(modelCard);
+            });
+        }
+
+        // Функция поиска (обновляет текущее представление)
+        function searchGifts() {
+            updateView();
+        }
+
+        // Открытие модального окна
+        function openModal(modelData, modelName) {
+            // Устанавливаем период в заголовке модального окна
+            document.getElementById('modalPeriodLabel').textContent = getPeriodLabel(currentPeriod);
+
+            document.getElementById('modalTitle').textContent = `Статистика: ${currentCollection || 'N/A'} ${modelName}`;
+            // Безопасный доступ к данным модели
+            document.getElementById('currentPrice').textContent = `${(modelData?.current?.floorPrice ?? 0).toFixed(2)} TON`;
+            document.getElementById('priceWithCommission').textContent = `${(modelData?.current?.priceWithComission ?? 0).toFixed(2)} TON`;
+            document.getElementById('volume').textContent = modelData?.current?.howMany ?? 0;
+
+            const changeVal = modelData?.changes?.[currentPeriod] ?? 0;
+            const changeClass = changeVal > 0 ? 'positive' : (changeVal < 0 ? 'negative' : 'neutral');
+            const changeSymbol = changeVal > 0 ? '+' : '';
+            const changeElement = document.getElementById('changePeriodValue');
+            changeElement.className = `stat-value ${changeClass}`; /* Обновлен класс */
+            changeElement.textContent = `${changeSymbol}${changeVal.toFixed(1)}%`;
+
+            // Обновление графика
+            // Проверяем, что historyData существует и является массивом
+            if (modelData?.history && Array.isArray(modelData.history)) {
+                updateChart(modelData.history, modelName);
+            } else {
+                // Если history отсутствует, показываем пустой график или сообщение
+                if (currentChart) {
+                    currentChart.destroy();
+                    currentChart = null;
+                }
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                console.warn(`История для модели ${modelName} отсутствует или некорректна.`);
+            }
+
+            document.getElementById('statsModal').style.display = 'flex'; // Использовать 'flex' для центрирования
+        }
+
+        // Закрытие модального окна
+        function closeModal() {
+            document.getElementById('statsModal').style.display = 'none';
+        }
+
+        // Обновление графика Chart.js
+        function updateChart(historyData, modelName) {
+            if (currentChart) {
+                currentChart.destroy(); // Уничтожить предыдущий график
+            }
+
+            // Фильтрация истории по текущему периоду
+            let filteredHistory = [];
+            const now = new Date();
+            let hoursToFilter = 0;
+            if (currentPeriod === '1h') hoursToFilter = 1;
+            else if (currentPeriod === '24h') hoursToFilter = 24;
+            else if (currentPeriod === '7d') hoursToFilter = 168;
+            else if (currentPeriod === '30d') hoursToFilter = 720;
+
+            if (hoursToFilter > 0) {
+                const cutOffTime = new Date(now.getTime() - hoursToFilter * 60 * 60 * 1000);
+                // Убедимся, что filteredHistory содержит хотя бы последнюю точку, если история слишком короткая
+                filteredHistory = historyData.filter(entry => new Date(entry.time) >= cutOffTime);
+                if (filteredHistory.length === 0 && historyData.length > 0) {
+                    filteredHistory = [historyData[historyData.length - 1]]; // Включаем последнюю точку, если нет других
+                }
+            } else {
+                filteredHistory = historyData; // Если период не указан, показать всю историю
+            }
+
+            // Убедимся, что отфильтрованные данные не пусты
+            if (filteredHistory.length === 0) {
+                const ctx = document.getElementById('priceChart').getContext('2d');
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+                return;
+            }
+
+
+            const labels = filteredHistory.map(entry => {
+                const date = new Date(entry.time);
+                if (currentPeriod === '1h' || currentPeriod === '24h') {
+                    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                } else if (currentPeriod === '7d') {
+                    return date.toLocaleDateString('ru-RU', { weekday: 'short', hour: '2-digit' });
+                } else { // 30d и другие
+                    return date.toLocaleDateString('ru-RU', { day: '2-digit', month: 'short' });
+                }
+            });
+            const prices = filteredHistory.map(entry => entry.price);
+
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Цена ${modelName} (TON)`,
+                        data: prices,
+                        borderColor: '#4ecdc4',
+                        backgroundColor: 'rgba(78, 205, 196, 0.2)',
+                        tension: 0.4,
+                        fill: true,
+                        pointRadius: 0,
+                        pointHitRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: true,
+                            labels: {
+                                color: 'white'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'white',
+                                autoSkip: true,
+                                maxTicksLimit: 10
+                            }
+                        },
+                        y: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)'
+                            },
+                            ticks: {
+                                color: 'white'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Вспомогательная функция для получения названия периода
+        function getPeriodLabel(period) {
+            switch (period) {
+                case '1h': return '1 час';
+                case '24h': return '24 часа';
+                case '7d': return '7 дней';
+                case '30d': return '30 дней';
+                default: return '';
+            }
+        }
+    </script>
+</body>
+</html>
