@@ -780,39 +780,34 @@
 
         // Основная функция загрузки данных
         async function loadData() {
-            try {
-                // Изначальное сообщение при загрузке
-                document.getElementById('collections-view').innerHTML = '<div class="loading">Загрузка данных...</div>';
-                document.getElementById('analyticsSummary').style.display = 'none'; // Скрыть до загрузки
+    try {
+        document.getElementById('collections-view').innerHTML = '<div class="loading">Загрузка данных...</div>';
+        document.getElementById('analyticsSummary').style.display = 'none';
 
-                // Загрузка данных с сервера
-                const response = await fetch('/api/gifts-data');
+        // ИЗМЕНИТЕ ЭТУ СТРОКУ:
+        const response = await fetch('/data.json'); // Теперь запрос идет к статическому файлу data.json
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                giftsData = await response.json();
-
-                updateLastUpdate();
-                updateAnalyticsSummary();
-                updateView(); // Обновляем основное представление
-
-                console.log('Данные успешно загружены');
-            } catch (error) {
-                console.error('Ошибка загрузки данных:', error);
-
-                // Используем моковые данные для демонстрации при ошибке
-                console.log('Используются демо-данные');
-                giftsData = generateMockData();
-
-                document.getElementById('collections-view').innerHTML = '<div class="error-message">Не удалось загрузить данные с сервера. Используются демонстрационные данные.</div><div class="collections-grid"></div>';
-
-                updateLastUpdate();
-                updateAnalyticsSummary();
-                updateView();
-            }
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+
+        giftsData = await response.json();
+
+        updateLastUpdate();
+        updateAnalyticsSummary();
+        updateView();
+
+        console.log('Данные успешно загружены');
+    } catch (error) {
+        console.error('Ошибка загрузки данных:', error);
+        console.log('Используются демо-данные');
+        giftsData = generateMockData();
+        document.getElementById('collections-view').innerHTML = '<div class="error-message">Не удалось загрузить данные с сервера. Используются демонстрационные данные.</div><div class="collections-grid"></div>';
+        updateLastUpdate();
+        updateAnalyticsSummary();
+        updateView();
+    }
+}
 
         // Генерация моковых данных (для демонстрации, удалить в продакшене)
         function generateMockData() {
