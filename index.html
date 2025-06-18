@@ -785,7 +785,7 @@
         document.getElementById('analyticsSummary').style.display = 'none';
 
         // ИЗМЕНИТЕ ЭТУ СТРОКУ:
-        const response = await fetch('/data.json'); // Теперь запрос идет к статическому файлу data.json
+        const response = await fetch('/web_gifts_data.json'); // Теперь запрос идет к статическому файлу data.json
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
